@@ -6,7 +6,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object Api {
-    const val KEY = "AQ.Ab8RN6IX5hCK_0tGfxQh2oiA-kVCIX55myelVVOH9du4mKg7QQ"
+    const val KEY = "AQ.Ab8RN6JAyC1xIR-oP-41oCVuTjfNBERrE0rda2PlPJv03EMXpw"
     const val MODEL = "gemini-2.0-flash"
 
     fun ask(history: List<Pair<String, String>>): String {
