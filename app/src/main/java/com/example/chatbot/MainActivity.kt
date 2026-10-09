@@ -1,6 +1,7 @@
 package com.example.chatbot
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.os.Bundle
@@ -12,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import java.io.File
 
 class MainActivity : Activity() {
     private val history = mutableListOf<Pair<String, String>>()
@@ -23,6 +25,9 @@ class MainActivity : Activity() {
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
+
+        val prefs = getSharedPreferences("cfg", MODE_PRIVATE)
+        Api.apiKey = prefs.getString("key", "") ?: ""
 
         chat = TextView(this).apply {
             textSize = 16f
@@ -52,10 +57,26 @@ class MainActivity : Activity() {
             }
         }
 
+        val keyBtn = Button(this).apply { text = "المفتاح" }
+        keyBtn.setOnClickListener {
+            val field = EditText(this).apply { hint = "الصق المفتاح هنا" }
+            AlertDialog.Builder(this)
+                .setTitle("مفتاح Gemini")
+                .setView(field)
+                .setPositiveButton("حفظ") { _, _ ->
+                    val k = field.text.toString().trim()
+                    prefs.edit().putString("key", k).apply()
+                    Api.apiKey = k
+                }
+                .setNegativeButton("إلغاء", null)
+                .show()
+        }
+
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(newChat)
             addView(copy)
+            addView(keyBtn)
         }
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -76,6 +97,10 @@ class MainActivity : Activity() {
     private fun onSend() {
         val msg = input.text.toString().trim()
         if (msg.isEmpty() || pending) return
+        if (Api.apiKey.isEmpty()) {
+            Toast.makeText(this, "اضغط زر المفتاح وأدخل مفتاح Gemini أولاً", Toast.LENGTH_LONG).show()
+            return
+        }
         input.setText("")
 
         history.add("user" to msg)
@@ -103,7 +128,7 @@ class MainActivity : Activity() {
     private fun render() {
         val sb = StringBuilder()
         if (history.isEmpty()) {
-            sb.append("بوت: أهلين! اكتب أي شي وأنا برد عليك.\n\n")
+            sb.append("بوت: أهلين! اضغط زر المفتاح أولاً، وبعدين اكتب رسالتك.\n\n")
         }
         for ((role, text) in history) {
             sb.append(if (role == "user") "أنت: " else "بوت: ")
