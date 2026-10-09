@@ -6,15 +6,17 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object Api {
-    const val KEY = "AQ.Ab8RN6L85_qx0zPc6xR_QvcsrbZIrD8A64zkV2DTbpiLja7xuw"
     const val MODEL = "gemini-2.0-flash"
+
+    // المفتاح بيتعيّن من MainActivity، مش مكتوب بالكود
+    var apiKey: String = ""
 
     fun ask(history: List<Pair<String, String>>): String {
         val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent")
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.setRequestProperty("Content-Type", "application/json")
-        conn.setRequestProperty("x-goog-api-key", KEY)
+        conn.setRequestProperty("x-goog-api-key", apiKey)
         conn.doOutput = true
 
         val contents = JSONArray()
