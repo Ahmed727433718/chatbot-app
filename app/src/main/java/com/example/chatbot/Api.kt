@@ -6,8 +6,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object Api {
-    const val MODEL = "gemini-2.0-flash"
-
+    const val MODEL = "gemini-3.8-flash"
     // المفتاح بيتعيّن من MainActivity، مش مكتوب بالكود
     var apiKey: String = ""
 
