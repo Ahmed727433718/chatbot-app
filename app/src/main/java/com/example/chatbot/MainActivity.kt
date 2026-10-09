@@ -1,7 +1,6 @@
 package com.example.chatbot
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.os.Bundle
@@ -13,7 +12,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import java.io.File
 
 class MainActivity : Activity() {
     private val history = mutableListOf<Pair<String, String>>()
@@ -25,9 +23,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
-
-        val prefs = getSharedPreferences("cfg", MODE_PRIVATE)
-        Api.apiKey = prefs.getString("key", "") ?: ""
+        Api.init(this)
 
         chat = TextView(this).apply {
             textSize = 16f
@@ -35,7 +31,7 @@ class MainActivity : Activity() {
             setTextIsSelectable(true)
         }
         scroll = ScrollView(this).apply { addView(chat) }
-        input = EditText(this).apply { hint = "اكتب رسالتك..." }
+        input = EditText(this).apply { hint = "اكتب مسألة مثل 12+7=" }
         send = Button(this).apply { text = "إرسال" }
         send.setOnClickListener { onSend() }
 
@@ -57,26 +53,10 @@ class MainActivity : Activity() {
             }
         }
 
-        val keyBtn = Button(this).apply { text = "المفتاح" }
-        keyBtn.setOnClickListener {
-            val field = EditText(this).apply { hint = "الصق المفتاح هنا" }
-            AlertDialog.Builder(this)
-                .setTitle("مفتاح Gemini")
-                .setView(field)
-                .setPositiveButton("حفظ") { _, _ ->
-                    val k = field.text.toString().trim()
-                    prefs.edit().putString("key", k).apply()
-                    Api.apiKey = k
-                }
-                .setNegativeButton("إلغاء", null)
-                .show()
-        }
-
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(newChat)
             addView(copy)
-            addView(keyBtn)
         }
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -97,10 +77,6 @@ class MainActivity : Activity() {
     private fun onSend() {
         val msg = input.text.toString().trim()
         if (msg.isEmpty() || pending) return
-        if (Api.apiKey.isEmpty()) {
-            Toast.makeText(this, "اضغط زر المفتاح وأدخل مفتاح Gemini أولاً", Toast.LENGTH_LONG).show()
-            return
-        }
         input.setText("")
 
         history.add("user" to msg)
@@ -128,7 +104,7 @@ class MainActivity : Activity() {
     private fun render() {
         val sb = StringBuilder()
         if (history.isEmpty()) {
-            sb.append("بوت: أهلين! اضغط زر المفتاح أولاً، وبعدين اكتب رسالتك.\n\n")
+            sb.append("بوت: أهلين! اكتب مسألة جمع أو طرح (أرقام من 0 إلى 99).\n\n")
         }
         for ((role, text) in history) {
             sb.append(if (role == "user") "أنت: " else "بوت: ")
