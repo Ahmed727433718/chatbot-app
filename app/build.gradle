@@ -29,3 +29,7 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
 }
+
+dependencies {
+    implementation 'org.tensorflow:tensorflow-lite:2.14.0'
+}
