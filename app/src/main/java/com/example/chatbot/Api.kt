@@ -1,84 +1,40 @@
 package com.example.chatbot
 
-import android.content.Context
-import org.tensorflow.lite.Interpreter
-import java.io.FileInputStream
-import java.nio.channels.FileChannel
+import java.net.HttpURLConnection
+import java.net.URL
 
 object Api {
     var apiKey: String = "local"
 
-    private const val SEQ = 10
-    private const val D = 2
-    private const val PLUS = 10
-    private const val MINUS = 11
-    private const val EQ = 12
-    private const val BOS = 13
-    private const val VOCAB = 14
+    private const val SERVER = "http://127.0.0.1:8000/solve"
+    private const val KEY = "TEST_API_CHATPYPT"
 
-    private var interp: Interpreter? = null
-
-    fun init(ctx: Context) {
-        if (interp != null) return
-        val fd = ctx.assets.openFd("math_float16.tflite")
-        val buf = FileInputStream(fd.fileDescriptor).channel
-            .map(FileChannel.MapMode.READ_ONLY, fd.startOffset, fd.declaredLength)
-        val ip = Interpreter(buf)
-        ip.resizeInput(0, intArrayOf(1, SEQ))
-        ip.allocateTensors()
-        interp = ip
+    fun init(ctx: android.content.Context) {
+        // لا حاجة لتحميل نموذج، السيرفر هو اللي يحسب
     }
 
     fun ask(history: List<Pair<String, String>>): String {
         val msg = history.lastOrNull { it.first == "user" }?.second
             ?: return "اكتب مسألة مثل 12+7="
-        val m = Regex("""\s*(\d+)\s*([+\-])\s*(\d+)\s*=?\s*""").matchEntire(msg)
-            ?: return "أنا بحسب الجمع والطرح بس، مثل: 12+7="
-        val a = m.groupValues[1].toInt()
-        val b = m.groupValues[3].toInt()
-        val sub = m.groupValues[2] == "-"
-        if (a > 99 || b > 99) return "الأرقام لازم تكون بين 0 و 99"
+
+        val conn = URL(SERVER).openConnection() as HttpURLConnection
         return try {
-            infer(a, b, sub)
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("X-Key", KEY)
+            conn.doOutput = true
+            val body = org.json.JSONObject().put("expr", msg).toString()
+            conn.outputStream.use { it.write(body.toByteArray()) }
+
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val resp = org.json.JSONObject(stream.bufferedReader().readText())
+            if (code in 200..299) resp.getString("answer")
+            else "خطأ: ${resp.optString("error", "غير معروف")}"
         } catch (e: Exception) {
-            "خطأ بالنموذج: ${e.message}"
+            "ما قدرت أوصل للسيرفر. تأكد إن Termux شغّال والسيرفر يعمل."
+        } finally {
+            conn.disconnect()
         }
-    }
-
-    private fun infer(a: Int, b: Int, sub: Boolean): String {
-        val ip = interp ?: return "النموذج ما اتحمّل"
-        val seq = IntArray(SEQ)
-        var pos = 0
-        fun put(t: Int) { seq[pos++] = t }
-
-        put(BOS)
-        for (k in 0 until D) put((a / p10(k)) % 10)
-        put(if (sub) MINUS else PLUS)
-        for (k in 0 until D) put((b / p10(k)) % 10)
-        put(EQ)
-
-        val out = IntArray(D + 2)
-        for (i in 0 until D + 2) {
-            val res = Array(1) { Array(SEQ) { FloatArray(VOCAB) } }
-            ip.run(arrayOf(seq), res)
-            val logits = res[0][pos - 1]
-            val range = if (i == 0) listOf(PLUS, MINUS) else (0..9).toList()
-            var best = range[0]
-            for (t in range) if (logits[t] > logits[best]) best = t
-            out[i] = best
-            if (pos < SEQ) seq[pos] = best
-            pos++
-        }
-
-        val sign = if (out[0] == MINUS) -1 else 1
-        var value = 0
-        for (k in 0..D) value += out[1 + k] * p10(k)
-        return (sign * value).toString()
-    }
-
-    private fun p10(k: Int): Int {
-        var r = 1
-        repeat(k) { r *= 10 }
-        return r
     }
 }
